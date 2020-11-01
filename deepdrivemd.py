@@ -7,23 +7,6 @@ import radical.utils as ru
 
 from radical.entk import Pipeline, Stage, Task, AppManager
 
-# Assumptions:
-# - # of MD steps: 2
-# - Each MD step runtime: 15 minutes
-# - Summit's scheduling policy [1]
-#
-# Resource rquest:
-# - 4 <= nodes with 2h walltime.
-#
-# Workflow [2]
-#
-# [1] https://www.olcf.ornl.gov/for-users/system-user-guides/summit/summit-user-guide/scheduling-policy
-# [2] https://docs.google.com/document/d/1XFgg4rlh7Y2nckH0fkiZTxfauadZn_zSn3sh51kNyKE/
-#
-'''
-export RADICAL_PILOT_PROFILE=True
-export RADICAL_ENTK_PROFILE=True
-'''
 
 def generate_training_pipeline(cfg):
     """
@@ -53,10 +36,9 @@ def generate_training_pipeline(cfg):
         for i in range(num_MD):
             t1 = Task()
             
-            # https://github.com/radical-collaboration/hyperspace/blob/MD/microscope/experiments/MD_exps/fs-pep/run_openmm.py
-            t1.pre_exec  = ['. /sw/summit/python/3.6/anaconda3/5.3.0/etc/profile.d/conda.sh || true']
+            # TODO: load correct modules for NAMD
             t1.pre_exec += ['module load cuda/9.1.85']
-            t1.pre_exec += ['conda activate %s' % cfg['conda_openmm']]
+
             t1.pre_exec += ['export PYTHONPATH=%s/MD_exps:%s/MD_exps/MD_utils:$PYTHONPATH' %
                 (cfg['base_path'], cfg['base_path'])]
             t1.pre_exec += ['cd %s/MD_exps/%s' % (cfg['base_path'], cfg['system_name'])]
@@ -64,7 +46,6 @@ def generate_training_pipeline(cfg):
             
             t1.executable = ['%s/bin/python' % cfg['conda_openmm']]  # run_openmm.py
             t1.arguments = ['%s/MD_exps/%s/run_openmm.py' % (cfg['base_path'], cfg['system_name'])]
-            #t1.arguments += ['--topol', '%s/MD_exps/fs-pep/pdb/topol.top' % cfg['base_path']]
            
             if 'top_file' in cfg:
                 t1.arguments += ['--topol', cfg['top_file']]
@@ -79,12 +60,6 @@ def generate_training_pipeline(cfg):
                 t1.arguments += ['--pdb_file', cfg['pdb_file'],
                         '-c', outlier_list[i]]
                 t1.pre_exec += ['cp %s ./' % outlier_list[i]]
-
-            # how long to run the simulation
-            if initial_MD:
-                t1.arguments += ['--length', cfg['LEN_initial']]
-            else:
-                t1.arguments += ['--length', cfg['LEN_iter']]
 
             # assign hardware the task
             t1.cpu_reqs = {'processes'          : 1,
@@ -110,8 +85,7 @@ def generate_training_pipeline(cfg):
 
         # Aggregation task
         t2 = Task()
-        
-        # https://github.com/radical-collaboration/hyperspace/blob/MD/microscope/experiments/MD_to_CVAE/MD_to_CVAE.py
+
         t2.pre_exec = [
                 '. /sw/summit/python/3.6/anaconda3/5.3.0/etc/profile.d/conda.sh || true',
                 'conda activate %s' % cfg['conda_pytorch'],
@@ -135,8 +109,7 @@ def generate_training_pipeline(cfg):
         # - Each node takes 6 ranks
         # - each rank processes 2 files
         # - each iteration accumulates files to process
-        cnt_constraint = min(cfg['node_counts'] * 6, cfg['md_counts'] * max(1,
-            CUR_STAGE) // 2)
+        cnt_constraint = min(cfg['node_counts'] * 6, cfg['md_counts'] * max(1, CUR_STAGE) // 2)
  
         t2.executable = ['%s/bin/python' % (cfg['conda_pytorch'])]  # MD_to_CVAE.py
         t2.arguments = [
@@ -178,7 +151,6 @@ def generate_training_pipeline(cfg):
             s3.name = 'learning'
 
             t3 = Task()
-            # https://github.com/radical-collaboration/hyperspace/blob/MD/microscope/experiments/CVAE_exps/train_cvae.py
             t3.pre_exec  = ['. /sw/summit/python/3.6/anaconda3/5.3.0/etc/profile.d/conda.sh || true']
             t3.pre_exec += ['module load gcc/7.4.0 || module load gcc/7.3.1',
                             'module load cuda/10.1.243',
@@ -200,16 +172,6 @@ def generate_training_pipeline(cfg):
             hp = cfg['ml_hpo'][i]
             cmd_cat    = 'cat /dev/null'
             cmd_jsrun  = 'jsrun -n %s -g %s -a %s -c %s -d packed' % (pnodes, cfg['gpu_per_node'], cfg['gpu_per_node'], cfg['cpu_per_node'])
-
-            # VAE config
-            # cmd_vae    = '%s/examples/run_vae_dist_summit_entk.sh' % cfg['molecules_path']
-            # cmd_sparse = ' '.join(['%s/MD_to_CVAE/cvae_input.h5' % cfg["base_path"],
-            #                        "./", cvae_dir, 'sparse-concat', 'resnet',
-            #                        str(cfg['residues']), str(cfg['residues']),
-            #                        str(hp['latent_dim']), 'amp', 'non-distributed',
-            #                        str(hp['batch_size']), str(cfg['epoch']),
-            #                        str(cfg['sample_interval']),
-            #                        hp['optimizer'], cfg['init_weights']])
 
             # AAE config
             cmd_vae    = '%s/examples/bin/run_aae_dist_entk.sh' % cfg['molecules_path']
@@ -235,24 +197,6 @@ def generate_training_pipeline(cfg):
                             '-ti', str(int(cfg['epoch']) + 1),
                             '-d', str(hp['latent_dim']),
                             '--num_data_workers', '0']
-
-            #+ f'{cfg['molecules_path']}/examples/run_vae_dist_summit.sh -i {sparse_matrix_path} -o ./ --model_id {cvae_dir} -f sparse-concat -t resnet --dim1 168 --dim2 168 -d 21 --amp --distributed -b {batch_size} -e {epoch} -S 3']
-        #     ,
-        #             '-i', sparse_matrix_path,
-        #             '-o', './',
-        #             '--model_id', cvae_dir,
-        #             '-f', 'sparse-concat',
-        #             '-t', 'resnet',
-        #             # fs-pep
-        #             '--dim1', 168,
-        #             '--dim2', 168,
-        #             '-d', 21,
-        #             '--amp',      # sparse matrix
-        #             '--distributed',
-        #             '-b', batch_size, # batch size
-        #             '-e', epoch,# epoch
-        #             '-S', 3
-        #             ]
 
             t3.cpu_reqs = {'processes'          : 6,
                            'process_type'       : 'MPI',
@@ -286,7 +230,6 @@ def generate_training_pipeline(cfg):
         cmd_cat = 'cat /dev/null'
         cmd_jsrun = 'jsrun -n %s -a %s -g %s -r 1 -c %s' % (cfg['node_counts'], cfg['gpu_per_node'], cfg['gpu_per_node'], cfg['cpu_per_node'] // cfg['gpu_per_node'])
 
-        #molecules_path = '/gpfs/alpine/world-shared/ven201/tkurth/molecules/'
         t4.executable = [' %s; %s %s/examples/outlier_detection/run_optics_dist_entk.sh' % (cmd_cat, cmd_jsrun, cfg['molecules_path'])]
         t4.arguments = ['%s/bin/python' % cfg['conda_pytorch']]
         t4.arguments += ['%s/examples/outlier_detection/optics.py' % cfg['molecules_path'],
