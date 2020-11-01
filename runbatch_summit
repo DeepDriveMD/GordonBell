@@ -194,6 +194,7 @@ cat > $TMPFILE << ENDINPUT
 #BSUB -nnodes $NUMNODES
 #BSUB -alloc_flags smt1
 #BSUB -J $NAME_JOB 
+#BSUB -q $QUEUE
 
 cd $RUNDIR
 

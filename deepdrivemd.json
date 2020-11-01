@@ -14,6 +14,8 @@
     "conda_pytorch": "/gpfs/alpine/proj-shared/med110/conda/pytorch",
     "base_path": "/gpfs/alpine/scratch/mturilli1/med110/DrugWorkflows/workflow-2",
     "molecules_path": "/gpfs/alpine/proj-shared/med110/hrlee/git/braceal/molecules",
+    "namd_path": "/gpfs/alpine/world-shared/bip115/NAMD_binaries/summit/NAMD_LATEST_Linux-POWER-pami-smp-Summit-CUDA/namd2",
+    "namd_log_filename": "pr.4.log",
     "system_name": "3clpro",
     "residues": 304,
     "init_weights": "/gpfs/alpine/proj-shared/med110/hrlee/pretrain-weights-3clpro-304-residue-48-latentdim-epoch-100-20200928-181009.pt",

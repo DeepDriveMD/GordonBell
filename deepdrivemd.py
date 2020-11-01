@@ -1,4 +1,5 @@
 import os
+import pathlib
 import sys
 import json
 import time
@@ -37,34 +38,55 @@ def generate_training_pipeline(cfg):
             t1 = Task()
             
             # TODO: load correct modules for NAMD
-            t1.pre_exec += ['module load cuda/9.1.85']
+            t1.pre_exec += [
+                    'module unload prrte',
+                    'module load cuda',
+                    'module load spectrum-mpi',
+                    'module load fftw',
+                    'export LD_LIBRARY_PATH=/autofs/nccs-svm1_sw/summit/.swci/1-compute/opt/spack/20180914/linux-rhel7-ppc64le/xl-16.1.1-5/spectrum-mpi-10.3.1.2-20200121-p6nrnt6vtvkn356wqg6f74n6jspnpjd2/lib/pami_port:$LD_LIBRARY_PATH',
+                    'export LD_PRELOAD=/opt/ibm/spectrum_mpi/lib/libpami_cudahook.so:$LD_PRELOAD',
+                    'unset CUDA_VISIBLE_DEVICES' ]
 
-            t1.pre_exec += ['export PYTHONPATH=%s/MD_exps:%s/MD_exps/MD_utils:$PYTHONPATH' %
-                (cfg['base_path'], cfg['base_path'])]
             t1.pre_exec += ['cd %s/MD_exps/%s' % (cfg['base_path'], cfg['system_name'])]
             t1.pre_exec += ['mkdir -p omm_runs_%d && cd omm_runs_%d' % (time_stamp+i, time_stamp+i)]
-            
-            t1.executable = ['%s/bin/python' % cfg['conda_openmm']]  # run_openmm.py
-            t1.arguments = ['%s/MD_exps/%s/run_openmm.py' % (cfg['base_path'], cfg['system_name'])]
            
-            if 'top_file' in cfg:
-                t1.arguments += ['--topol', cfg['top_file']]
+            
+            cmd_cat    = 'cat /dev/null'
+            cmd_jsrun  = 'jsrun --bind rs -n%s -p%s -r%s -g%s -c%s' % (
+                    cfg['gpu_per_node'] * cfg['node_counts'], 
+                    cfg['gpu_per_node'] * cfg['node_counts'], 
+                    cfg['gpu_per_node'],
+                    1,
+                    cfg['cpu_per_node'] // cfg['gpu_per_node'])
+            cmd_namd = cfg['namd_path']  # run_openmm.py
+            #t1.executable = [cfg['namd_path']]  # run_openmm.py
+            t1.executable = ['%s; %s %s' % (cmd_cat, cmd_jsrun, cmd_namd)]
+
+            omm_dir = '%s/MD_exps/%s/omm_runs_%d' % (cfg['base_path'],
+                    cfg['system_name'],  time_stamp+i)
 
             # pick initial point of simulation
             if initial_MD or i >= len(outlier_list):
-                t1.arguments += ['--pdb_file', cfg['pdb_file'] ]
+                pdb_path = cfg['pdb_file']
             elif outlier_list[i].endswith('pdb'):
-                t1.arguments += ['--pdb_file', outlier_list[i]]
-                t1.pre_exec += ['cp %s ./' % outlier_list[i]]
-            elif outlier_list[i].endswith('chk'):
-                t1.arguments += ['--pdb_file', cfg['pdb_file'],
-                        '-c', outlier_list[i]]
-                t1.pre_exec += ['cp %s ./' % outlier_list[i]]
+                pdb_path = outlier_list[i]
 
+            conf_path = os.path.join("%s/tmp/%s" % (cfg['base_path'],
+                time_stamp+i))
+            write_conf(conf_path, pdb_path)
+            t1.pre_exec += ['cp %s %s' % (pdb_path, omm_dir), 
+                    'cp %s %s' % (conf_path, omm_dir) ]
+            t1.arguments = ['+ignoresharing',
+                    '+ppn', '7',
+                    '+pemap', '0-83:4,88-171:4',
+                    conf_path]
+
+            t1.download_output_data = ['STDOUT > %s_%s' % (i, cfg['namd_log_filename'])]
+           
             # assign hardware the task
-            t1.cpu_reqs = {'processes'          : 1,
-                           'process_type'       : None,
-                           'threads_per_process': 4,
+            t1.cpu_reqs = {'processes'          : 6 * cfg['node_counts'],
+                           'process_type'       : 'MPI',
+                           'threads_per_process': 6 * 4,
                            'thread_type'        : 'OpenMP'}
             t1.gpu_reqs = {'processes'          : 1,
                            'process_type'       : None,
@@ -370,6 +392,7 @@ if __name__ == '__main__':
                         password=os.environ.get('RMQ_PASSWORD'))
     appman.resource_desc = res_dict
 
+    pathlib.Path("%s/tmp" % cfg['base_path']).mkdir(exist_ok=True)
     p1 = generate_training_pipeline(cfg)
     pipelines = [p1]
 
