@@ -1,0 +1,262 @@
+#!/bin/bash
+
+NAME_INP="R1_8PR"
+NAME_JOB="R5_4PR"
+DEP="0"
+DEPENDENCY=`bjobs | grep $NAME_INP | awk '{print $1}'`
+
+ACCOUNT=${ACCOUNT:-`groups | awk '{print $NF}'`}
+
+echo "Using account $ACCOUNT, export ACCOUNT=<...> to change."
+
+if (( $# < 3 )); then
+  echo "This script requires three arguments:"
+  echo "  NAMD input file"
+  echo "  NAMD log file"
+  if [[ "${0##.*/}" != *cpu* ]]; then
+    echo "  number of nodes (number of GPUs / 6)"
+  else
+    echo "  number of nodes (number of cores / 42)"
+    echo "  processes per node (1, 2, 6; defaults to 2, ignored for cuda)"
+  fi
+  echo '  queue (defaults to "batch", other option is "test")'
+  echo "  replica or other args (optional)"
+  exit -1
+fi
+
+CONFFILE=$1
+shift
+LOGFILE=$1
+shift
+NUMNODES=$1
+shift
+
+if [[ "${0##.*/}" == *cpu* ]]; then
+  PROCSPERNODE=2
+else
+  PROCSPERNODE=6
+fi
+
+if [[ $# -ne 0 ]] && [[ "$1" != *[a-z]* ]]; then
+  PROCSPERNODE=$1
+  shift
+fi
+
+if [[ "${0##.*/}" == *cpu* ]]; then
+  if [[ $PROCSPERNODE -ne 2 ]]; then
+    echo "error: illegal processes per node $PROCPERNODE"
+    exit -1
+  fi
+else
+  if [[ $PROCSPERNODE -ne 6 ]]; then
+    echo "error: illegal processes per node $PROCPERNODE"
+    exit -1
+  fi
+fi
+
+QUEUE=batch
+
+if [[ $# -ne 0 ]]; then
+  if [[ "$1" == "test" ]]; then
+    QUEUE=$1
+    shift
+  fi
+fi
+
+REPLICAS=1
+REPARGS=""
+
+while [[ $# -ne 0 ]]; do
+  if [[ "$1" == "+replicas" ]] || [[ "$1" == "+partitions" ]]; then
+    REPLICAS=$2
+    # REPARGS="$REPARGS --FFTWUseWisdom no"
+  fi
+  REPARGS="$REPARGS $1"
+  shift
+done
+
+if (( $REPLICAS > 1 )); then
+
+  OLDNUMNODES=$NUMNODES
+  if (( $REPLICAS < $NUMNODES )); then
+    echo "warning: NAMD on Summit does not support multi-node replicas"
+    NUMNODES=$REPLICAS
+    PROCSPERNODE=1
+  elif (( $REPLICAS == $NUMNODES )); then
+    PROCSPERNODE=1
+  elif (( $REPLICAS < 2 * $NUMNODES )); then
+    NUMNODES=$(( ( $REPLICAS + 1 ) / 2 ))
+    PROCSPERNODE=2
+  elif (( $REPLICAS == 2 * $NUMNODES )); then
+    PROCSPERNODE=2
+  elif (( $REPLICAS < 6 * $NUMNODES )); then
+    NUMNODES=$(( ( $REPLICAS + 5 ) / 6 ))
+    PROCSPERNODE=6
+  elif (( $REPLICAS == 6 * $NUMNODES )); then
+    PROCSPERNODE=6
+  elif (( $REPLICAS > 6 * $NUMNODES )); then
+    echo "error: NAMD on Summit supports at most 6 replicas per node"
+    exit -1
+  else
+    echo "error: bug in replica and node matching logic"
+    exit -1
+  fi
+
+  if (( $NUMNODES < $OLDNUMNODES )); then
+    echo "warning: Reducing node count from $OLDNUMNODES to $NUMNODES"
+  fi
+
+  TOTALPROCS=$REPLICAS
+
+else
+
+  TOTALPROCS=$(( $NUMNODES * $PROCSPERNODE ))
+
+fi
+
+TOTALRSETS=$(( $NUMNODES * $PROCSPERNODE ))
+JSRUNARGS="--bind rs -n${TOTALRSETS} -p${TOTALPROCS}"
+
+case "$PROCSPERNODE" in
+1)
+  JSRUNARGS="$JSRUNARGS -r1 -g6 -c42"
+  NAMDARGS="+ppn 42 +pemap 0-83:4,88-171:4"
+  COMMAP="+commap 0"
+  ;;
+2)
+  JSRUNARGS="$JSRUNARGS -r2 -g3 -c21"
+  NAMDARGS="+ppn 21 +pemap 0-83:4,88-171:4"
+  COMMAP="+commap 0,88"
+  ;;
+6)
+  JSRUNARGS="$JSRUNARGS -r6 -g1 -c7"
+  NAMDARGS="+ppn 7 +pemap 0-83:4,88-171:4"
+  COMMAP="+commap 0,28,56,88,116,144"
+  ;;
+*)
+  echo "Unrecognized processes per node count $PROCSPERNODE"
+  exit -1
+esac
+
+if (( $REPLICAS > 1 )); then
+  NET="-MPI"
+  NAMDARGS="$NAMDARGS $COMMAP"
+else
+  NET="-pami"
+fi
+
+SMP="-smp"
+if [[ "${0##.*/}" == *cpu* ]]; then
+  CUDA=""
+  CUDAENV=""
+else
+  CUDA="-CUDA"
+  NAMDARGS="+ignoresharing $NAMDARGS"
+  CUDAENV="module load cuda"
+fi
+
+# https://www.olcf.ornl.gov/for-users/system-user-guides/summit/summit-user-guide/#running-jobs
+TIME=2:00
+if (( $NUMNODES > 45 )); then TIME=12:00; fi
+if (( $NUMNODES > 91 )); then TIME=12:00; fi
+if (( $NUMNODES > 921 )); then TIME=24:00; fi
+
+if [[ "$QUEUE" == test ]]; then
+  TIME=30
+  QUEUE=batch
+fi
+
+if [[ ! -f $CONFFILE ]]; then
+  echo "NAMD input file $CONFFILE does not exist!"
+  exit -1
+fi
+
+if [[ -e $LOGFILE ]]; then
+  echo "NAMD output file $LOGFILE already exists!"
+  exit -1
+fi
+
+RUNDIR=`pwd`
+
+MEMOPT=""
+if [[ "${0##.*/}" == *memopt* ]]; then MEMOPT="-memopt"; fi
+
+echo "Submitting NAMD run to queue $QUEUE for $TIME..."
+echo ""
+
+TMPFILE=./1.runbatch.NAMDcuda.bsub
+
+if (( $DEP < 1 )); then
+cat > $TMPFILE << ENDINPUT
+#!/bin/bash
+#BSUB -P $ACCOUNT
+#BSUB -W $TIME
+#BSUB -nnodes $NUMNODES
+#BSUB -alloc_flags smt1
+#BSUB -J $NAME_JOB 
+
+cd $RUNDIR
+
+$CUDAENV
+module load spectrum-mpi
+module load fftw
+
+echo PBS opts:  -P $ACCOUNT -W $TIME -nnodes $NUMNODES -alloc_flags smt1 -J NAMD
+echo jsrun opts:  $JSRUNARGS
+echo NAMD opts:  $NAMDARGS $REPARGS
+echo conf file:  $CONFFILE
+echo log file:  $LOGFILE
+
+jsrun $JSRUNARGS /gpfs/alpine/world-shared/bip115/NAMD_binaries/summit/NAMD_LATEST_Linux-POWER${NET}${SMP}-Summit${CUDA}${MEMOPT}/namd2 $NAMDARGS $CONFFILE $REPARGS > ${LOGFILE} 2>&1
+
+ENDINPUT
+else
+cat > $TMPFILE << ENDINPUT
+#!/bin/bash
+#BSUB -P $ACCOUNT
+#BSUB -W $TIME
+#BSUB -nnodes $NUMNODES
+#BSUB -alloc_flags smt1
+#BSUB -J $NAME_JOB 
+#BSUB -w done($DEPENDENCY)
+
+cd $RUNDIR
+
+$CUDAENV
+module load spectrum-mpi
+module load fftw
+
+echo PBS opts:  -P $ACCOUNT -W $TIME -nnodes $NUMNODES -alloc_flags smt1 -J NAMD
+echo jsrun opts:  $JSRUNARGS
+echo NAMD opts:  $NAMDARGS $REPARGS
+echo conf file:  $CONFFILE
+echo log file:  $LOGFILE
+
+jsrun $JSRUNARGS /gpfs/alpine/world-shared/bip115/NAMD_binaries/summit/NAMD_LATEST_Linux-POWER${NET}${SMP}-Summit${CUDA}${MEMOPT}/namd2 $NAMDARGS $CONFFILE $REPARGS > ${LOGFILE} 2>&1
+
+ENDINPUT
+echo "----> This job is submitted in DEPENDENCY of $DEPENDENCY and JOBNAME $NAME_INP <-----"
+fi
+
+cat $TMPFILE
+bsub $TMPFILE
+
+if (( $? )); then
+echo ""
+echo "Queue submission failed, please see errors above."
+echo ""
+else
+echo ""
+echo "NAMD is submitted to the queue, to check on your job use this command:"
+echo ""
+echo "    bjobs"
+echo ""
+echo "Your job is running if there is RUN in the STAT column."
+echo "You may monitor progress with this command:"
+echo ""
+echo "    tail -F $LOGFILE"
+echo ""
+echo "You will need to press Control-C to exit the tail command."
+echo ""
+fi
+
