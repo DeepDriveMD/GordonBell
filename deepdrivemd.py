@@ -50,7 +50,8 @@ def generate_training_pipeline(cfg):
                 "unset CUDA_VISIBLE_DEVICES",
             ]
 
-            t1.pre_exec += ["cd %s/MD_exps/%s" % (cfg["base_path"], cfg["system_name"])]
+            t1.pre_exec += ["mkdir -p %s/MD_exps/%s" % (cfg["base_path"], cfg["system_name"]),
+                            "cd %s/MD_exps/%s" % (cfg["base_path"], cfg["system_name"])]
             t1.pre_exec += [
                 "mkdir -p omm_runs_%d && cd omm_runs_%d"
                 % (time_stamp + i, time_stamp + i)
