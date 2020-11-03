@@ -1,4 +1,5 @@
 {
+    "node_counts": 20,
     "md_counts": 120,
     "ml_counts": 3,
     "gpu_per_node": 6,

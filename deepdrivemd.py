@@ -8,7 +8,7 @@ import radical.utils as ru
 
 from radical.entk import Pipeline, Stage, Task, AppManager
 
-from .namd_config import write_namd_configuration
+from namd_config import write_namd_configuration
 
 
 def generate_training_pipeline(cfg):
@@ -76,10 +76,10 @@ def generate_training_pipeline(cfg):
             # pick initial point of simulation
             if initial_MD or i >= len(outlier_list):
                 pdb_path = cfg["pdb_file"]
-            else outlier_list[i].endswith("pdb"):
+            elif outlier_list[i].endswith("pdb"):
                 pdb_path = outlier_list[i]
 
-            conf_path = os.path.join("%s/tmp/%s" % (cfg["base_path"], time_stamp + i))
+            conf_path = os.path.join("%s/tmp/%s.conf" % (cfg["base_path"], time_stamp + i))
             write_namd_configuration(conf_path, pdb_path)
             t1.pre_exec += [
                 "cp %s %s" % (pdb_path, omm_dir),
@@ -237,7 +237,7 @@ def generate_training_pipeline(cfg):
             t3.arguments = ["%s/bin/python" % cfg["conda_pytorch"]]
             t3.arguments += [
                 "%s/examples/example_aae.py" % cfg["molecules_path"],
-                "-i %s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"]",
+                "-i %s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
                 "-o ./",
                 "--distributed",
                 "-m %s" % cvae_dir,
@@ -248,7 +248,7 @@ def generate_training_pipeline(cfg):
                 "-np %s" % str(cfg["residues"]),
                 "-e %s" % str(cfg["epoch"]),
                 "-b %s" % str(hp["batch_size"]),
-                "-opt %s" hp["optimizer"],
+                "-opt %s" % hp["optimizer"],
                 "-iw %s" % cfg["init_weights"],
                 "-lw %s" % hp["loss_weights"],
                 "-S %s" % str(cfg["sample_interval"]),
@@ -430,7 +430,8 @@ if __name__ == "__main__":
         reporter.exit("Usage:\t%s [config.json]\n\n" % sys.argv[0])
 
     cfg = ru.Config(cfg=ru.read_json(cfg_file))
-    cfg["node_counts"] = max(1, cfg["md_counts"] // cfg["gpu_per_node"])
+    if "node_counts" not in cfg:
+        cfg["node_counts"] = max(1, cfg["md_counts"] // cfg["gpu_per_node"])
 
     res_dict = {
         "resource": cfg["resource"],

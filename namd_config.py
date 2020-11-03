@@ -1,4 +1,4 @@
-def write_namd_configuration(conf_file: str, pdb_file: str):
+def write_namd_configuration(conf_file: str, pdb_file: str="spike_ace2_equi_pores_lipidsw_ions"):
     conf = [
         "#############################################################\n",
         "## JOB DESCRIPTION                                         ##\n",
@@ -18,8 +18,8 @@ def write_namd_configuration(conf_file: str, pdb_file: str):
         "set outname             pr.4\n",
         "\n",
         "\n",
-        "set dir_ff              ../../CHARMM36m\n",
-        "set dir_pdb             ../../../SIMULATIONS_SUMMIT\n",
+        "set dir_ff              /gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT/CHARMM36m\n",
+        "set dir_pdb             /gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT\n",
         "\n",
         "\n",
         "set logfreq  \t\t  10080\n",
@@ -35,7 +35,7 @@ def write_namd_configuration(conf_file: str, pdb_file: str):
         "#############################################################\n",
         "\n",
         "structure          ${dir_pdb}/${namepdb}.psf\n",
-        "coordinates        ${dir_pdb}/pr.11_000121.pdb\n",
+        "coordinates        %s\n" % pdb_file,
         "outputName         ${outname}\n",
         "\n",
         "# Continuing a job from the restart files\n",
