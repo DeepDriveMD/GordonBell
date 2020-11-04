@@ -100,7 +100,7 @@ def generate_training_pipeline(cfg):
 
             # assign hardware the task
             t1.cpu_reqs = {
-                "processes": 6 * cfg["node_counts"],
+                "processes": 6 * cfg["node_counts"] // int(num_MD),
                 "process_type": "MPI",
                 "threads_per_process": 6 * 4,
                 "thread_type": "OpenMP",
