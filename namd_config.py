@@ -1,4 +1,4 @@
-def write_namd_configuration(conf_file: str, pdb_file:str, dcdfreq:str, num_steps_eq:str):
+def write_namd_configuration(conf_file: str, **args):
     conf = [
         "#############################################################\n",
         "## JOB DESCRIPTION                                         ##\n",
@@ -23,9 +23,9 @@ def write_namd_configuration(conf_file: str, pdb_file:str, dcdfreq:str, num_step
         "\n",
         "\n",
         "set logfreq  \t\t  10080\n",
-        "set dcdfreq     \t  %s\n" % dcdfreq,
-        "set num_steps_min  \t  5040\n",
-        "set num_steps_eq   \t  %s;#250000  --> 0.5 ns\n" % num_steps_eq,
+        "set dcdfreq     \t  %s\n" % args['dcdfreq'],
+        "set num_steps_min  \t  %s\n" % args['num_steps_min'],
+        "set num_steps_eq   \t  %s;#250000  --> 0.5 ns\n" % args['num_steps_eq'],
         "\n",
         "set temp\t\t310\n",
         "\n",
@@ -35,7 +35,7 @@ def write_namd_configuration(conf_file: str, pdb_file:str, dcdfreq:str, num_step
         "#############################################################\n",
         "\n",
         "structure          ${dir_pdb}/${namepdb}.psf\n",
-        "coordinates        %s\n" % pdb_file,
+        "coordinates        %s\n" % args['pdb_file'],
         "outputName         ${outname}\n",
         "\n",
         "# Continuing a job from the restart files\n",
@@ -109,7 +109,7 @@ def write_namd_configuration(conf_file: str, pdb_file:str, dcdfreq:str, num_step
         "rigidBonds          all  ;# needed for 2fs steps\n",
         "nonbondedFreq       1\n",
         "fullElectFrequency  3  \n",
-        "stepspercycle       24\n",
+        "stepspercycle       %s\n" % args['stepspercycle'],
         "\n",
         "\n",
         "################################################\n",
