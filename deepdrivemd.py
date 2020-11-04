@@ -60,8 +60,8 @@ def generate_training_pipeline(cfg):
 
             cmd_cat = "cat /dev/null"
             cmd_jsrun = "jsrun --bind rs -n%s -p%s -r%s -g%s -c%s" % (
-                cfg["gpu_per_node"] * cfg["node_counts"],
-                cfg["gpu_per_node"] * cfg["node_counts"],
+                cfg["gpu_per_node"] * cfg["node_counts"] // int(num_MD),
+                cfg["gpu_per_node"] * cfg["node_counts"] // int(num_MD),
                 cfg["gpu_per_node"],
                 1,
                 cfg["cpu_per_node"] // cfg["gpu_per_node"],
