@@ -1,4 +1,4 @@
-def write_namd_configuration(conf_file: str, pdb_file: str="spike_ace2_equi_pores_lipidsw_ions"):
+def write_namd_configuration(conf_file: str, pdb_file:str, dcdfreq:str, num_steps_eq:str):
     conf = [
         "#############################################################\n",
         "## JOB DESCRIPTION                                         ##\n",
@@ -23,9 +23,9 @@ def write_namd_configuration(conf_file: str, pdb_file: str="spike_ace2_equi_pore
         "\n",
         "\n",
         "set logfreq  \t\t  10080\n",
-        "set dcdfreq     \t  50000\n",
+        "set dcdfreq     \t  %s\n" % dcdfreq,
         "set num_steps_min  \t  5040\n",
-        "set num_steps_eq   \t  50400000      ;#250000  --> 0.5 ns\n",
+        "set num_steps_eq   \t  %s;#250000  --> 0.5 ns\n" % num_steps_eq,
         "\n",
         "set temp\t\t310\n",
         "\n",

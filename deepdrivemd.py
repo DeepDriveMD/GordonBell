@@ -3,13 +3,14 @@ import pathlib
 import sys
 import json
 import time
+import itertools
 
 import radical.utils as ru
 
 from radical.entk import Pipeline, Stage, Task, AppManager
 
 from namd_config import write_namd_configuration
-
+#
 
 def generate_training_pipeline(cfg):
     """
@@ -33,7 +34,7 @@ def generate_training_pipeline(cfg):
             with open(outlier_filepath, "r") as f:
                 outlier_list = json.load(f)
         else:
-            outlier_list = []
+            outlier_list = itertools.cycle(cfg['pdb_file'])
 
         # MD tasks
         time_stamp = int(time.time())
@@ -75,13 +76,14 @@ def generate_training_pipeline(cfg):
             )
 
             # pick initial point of simulation
-            if initial_MD or i >= len(outlier_list):
-                pdb_path = cfg["pdb_file"]
-            elif outlier_list[i].endswith("pdb"):
+            if initial_MD:
+                pdb_path = next(outlier_list)
+            else:
                 pdb_path = outlier_list[i]
 
             conf_path = os.path.join("%s/tmp/%s.conf" % (cfg["base_path"], time_stamp + i))
-            write_namd_configuration(conf_path, pdb_path)
+            write_namd_configuration(conf_path, pdb_path,
+                    str(cfg['dcdfreq']),str(cfg['num_steps_eq']))
             t1.pre_exec += [
                 "cp %s %s" % (pdb_path, omm_dir),
                 "cp %s %s" % (conf_path, omm_dir),
@@ -142,7 +144,7 @@ def generate_training_pipeline(cfg):
             % (cfg["base_path"], cfg["system_name"]),
             "export tmp_path=`mktemp -p %s/MD_to_CVAE/ -d`" % cfg["base_path"],
             "for dcd in ${dcd_list[@]}; do tmp=$(basename $(dirname $dcd)); ln -s $dcd $tmp_path/$tmp.dcd; done",
-            "ln -s %s $tmp_path/prot.pdb" % cfg["pdb_file"],
+            "ln -s %s $tmp_path/prot.pdb" % cfg["ref_pdb"],
             "ls ${tmp_path}",
         ]
 
@@ -158,17 +160,17 @@ def generate_training_pipeline(cfg):
         t2.executable = ["%s/bin/python" % (cfg["conda_pytorch"])]  # MD_to_CVAE.py
         t2.arguments = [
             "%s/scripts/traj_to_dset.py" % cfg["molecules_path"],
-            "-t $tmp_path",
-            "-p %s/Parameters/input_protein/prot.pdb" % cfg["base_path"],
-            "-r %s/Parameters/input_protein/prot.pdb" % cfg["base_path"],
-            "-o %s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
-            "--contact_maps_parameters kernel_type=threshold,threshold=%s" % cfg["cutoff"],
-            "-s %s" % cfg["selection"],
+            "-t", "$tmp_path",
+            "-p", cfg["ref_pdb"],
+            "-r", cfg["ref_pdb"],
+            "-o", "%s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
+            "--contact_maps_parameters", "kernel_type=threshold,threshold=%s" % cfg["cutoff"],
+            "-s", cfg["selection"],
             "--rmsd",
             "--fnc",
             "--contact_map",
             "--point_cloud",
-            "--num_workers 2",
+            "--num_workers", 2,
             "--distributed",
             "--verbose",
         ]
@@ -205,6 +207,7 @@ def generate_training_pipeline(cfg):
                 "module load hdf5/1.10.4 || true",
                 "export LANG=en_US.utf-8",
                 "export LC_ALL=en_US.utf-8",
+                "export HDF5_USE_FILE_LOCKING=FALSE"
             ]
             t3.pre_exec += ["conda activate %s" % cfg["conda_pytorch"]]
             dim = i + 3
@@ -238,24 +241,24 @@ def generate_training_pipeline(cfg):
             t3.arguments = ["%s/bin/python" % cfg["conda_pytorch"]]
             t3.arguments += [
                 "%s/examples/example_aae.py" % cfg["molecules_path"],
-                "-i %s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
-                "-o ./",
-                "--distributed",
-                "-m %s" % cvae_dir,
-                "-dn point_cloud",
-                "-rn rmsd",
-                "--encoder_kernel_sizes 5 3 3 1 1",
-                "-nf 0",
-                "-np %s" % str(cfg["residues"]),
-                "-e %s" % str(cfg["epoch"]),
-                "-b %s" % str(hp["batch_size"]),
-                "-opt %s" % hp["optimizer"],
-                "-iw %s" % cfg["init_weights"],
-                "-lw %s" % hp["loss_weights"],
-                "-S %s" % str(cfg["sample_interval"]),
-                "-ti %s" % str(int(cfg["epoch"]) + 1),
-                "-d %s" % str(hp["latent_dim"]),
-                "--num_data_workers 0",
+                "-i",  "%s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
+                "-o", "./",
+                #"--distributed",
+                "-m", cvae_dir,
+                "-dn", "point_cloud",
+                "-rn", "rmsd",
+                "--encoder_kernel_sizes", 5, 3, 3, 1, 1,
+                "-nf", 0,
+                "-np", str(cfg["residues"]),
+                "-e", str(cfg["epoch"]),
+                "-b", str(hp["batch_size"]),
+                "-opt", hp["optimizer"],
+                "-iw", cfg["init_weights"],
+                "-lw", hp["loss_weights"],
+                "-S", str(cfg["sample_interval"]),
+                "-ti", str(int(cfg["epoch"]) + 1),
+                "-d", str(hp["latent_dim"]),
+                "--num_data_workers", 0,
             ]
 
             t3.cpu_reqs = {
@@ -310,18 +313,18 @@ def generate_training_pipeline(cfg):
         t4.arguments = ["%s/bin/python" % cfg["conda_pytorch"]]
         t4.arguments += [
             "%s/examples/outlier_detection/optics.py" % cfg["molecules_path"],
-            "--sim_path %s/MD_exps/%s" % (cfg["base_path"], cfg["system_name"]),
-            "--pdb_out_path %s/Outlier_search/outlier_pdbs" % cfg["base_path"],
-            "--restart_points_path %s/Outlier_search/restart_points.json" % cfg["base_path"],
-            "--data_path %s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
-            "--model_paths $models",
-            "--model_type %s" % cfg["model_type"],
-            "--min_samples 10",
-            "--n_outliers 500",
-            "--dim1 %s" % str(cfg["residues"]),
-            "--dim2 %s" % str(cfg["residues"]),
-            "--cm_format sparse-concat",
-            "--batch_size %s" % str(cfg["batch_size"]),
+            "--sim_path",  "%s/MD_exps/%s" % (cfg["base_path"], cfg["system_name"]),
+            "--pdb_out_path",  "%s/Outlier_search/outlier_pdbs" % cfg["base_path"],
+            "--restart_points_path", "%s/Outlier_search/restart_points.json" % cfg["base_path"],
+            "--data_path", "%s/MD_to_CVAE/cvae_input.h5" % cfg["base_path"],
+            "--model_paths", "$models",
+            "--model_type",  cfg["model_type"],
+            "--min_samples", 10,
+            "--n_outliers", cfg['md_counts'] ,
+            "--dim1", str(cfg["residues"]),
+            "--dim2", str(cfg["residues"]),
+            "--cm_format", "sparse-concat",
+            "--batch_size", str(cfg["batch_size"]),
             "--distributed",
         ]
 
