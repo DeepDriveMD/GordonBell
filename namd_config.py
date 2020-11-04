@@ -1,4 +1,4 @@
-def write_namd_configuration(conf_file: str, **args):
+def write_namd_configuration(conf_file: str, pdb_file:str, args: dict):
     conf = [
         "#############################################################\n",
         "## JOB DESCRIPTION                                         ##\n",
@@ -35,7 +35,7 @@ def write_namd_configuration(conf_file: str, **args):
         "#############################################################\n",
         "\n",
         "structure          ${dir_pdb}/${namepdb}.psf\n",
-        "coordinates        %s\n" % args['pdb_file'],
+        "coordinates        %s\n" % pdb_file,
         "outputName         ${outname}\n",
         "\n",
         "# Continuing a job from the restart files\n",

@@ -82,8 +82,7 @@ def generate_training_pipeline(cfg):
                 pdb_path = outlier_list[i]
 
             conf_path = os.path.join("%s/tmp/%s.conf" % (cfg["base_path"], time_stamp + i))
-            write_namd_configuration(conf_path, pdb_path,
-                    str(cfg['dcdfreq']),str(cfg['num_steps_eq']))
+            write_namd_configuration(conf_path, pdb_path, cfg)
             t1.pre_exec += [
                 "cp %s %s" % (pdb_path, omm_dir),
                 "cp %s %s" % (conf_path, omm_dir),
