@@ -20,7 +20,7 @@
     "dcdfreq": 12,
     "num_steps_min": 100,
     "num_steps_eq": 600,
-    "stepspercycle", 6,
+    "stepspercycle": 6,
     "init_weights": "/gpfs/alpine/world-shared/med110/atrifan/runs/model-spike_ace_all/checkpoint/epoch-100-20200929-051506.pt",
     "ref_pdb": "/gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT/outlier_pdbs_456/rep6_pr.9.dcd_frame-97-outlier-ind-135936_all_data_search.pdb",
     "pdb_file": ["/gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT/outlier_pdbs_456/rep6_pr.9.dcd_frame-97-outlier-ind-135936_all_data_search.pdb",
