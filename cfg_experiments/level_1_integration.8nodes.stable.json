@@ -1,6 +1,6 @@
 {
-    "node_counts": 64,
-    "md_counts": 1,
+    "node_counts": 8,
+    "md_counts": 2,
     "ml_counts": 1,
     "gpu_per_node": 6,
     "cpu_per_node": 42,
@@ -11,7 +11,7 @@
     "batch_size": 2,
     "model_type": "aae",
     "conda_pytorch": "/gpfs/alpine/proj-shared/med110/conda/pytorch",
-    "base_path": "/gpfs/alpine/proj-shared/med110/runs/64nodes.stable",
+    "base_path": "/gpfs/alpine/proj-shared/med110/runs/lv1.4nodes.stable",
     "molecules_path": "/gpfs/alpine/proj-shared/med110/hrlee/git/braceal/molecules",
     "namd_path": "/gpfs/alpine/world-shared/bip115/NAMD_binaries/summit/NAMD_LATEST_Linux-POWER-pami-smp-Summit-CUDA/namd2",
     "namd_log_filename": "pr.4.log",
@@ -29,7 +29,7 @@
         "/gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT/outlier_pdbs_456/rep6_pr.9.dcd_frame-97-outlier-ind-135936_all_data_search.pdb",
         "/gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT/outlier_pdbs_456/rep4_pr.10.dcd_frame-230-outlier-ind-230.pdb",
         "/gpfs/alpine/world-shared/med110/lcasalino/NAMD3_TESTS/SPIKE_ACE_8.5M/SIMULATIONS_SUMMIT/outlier_pdbs_456/rep4_pr.7.dcd_frame-220-outlier-ind-1185.pdb"
-	],
+    ],
     "ml_hpo": [
         {
             "optimizer": "name=Adam,lr=1e-4",
@@ -42,8 +42,8 @@
     "MAX_STAGE": 2,
     "RETRAIN_FREQ": 1,
     "resource": "ornl.summit",
-    "queue": "debug",
+    "queue": "batch",
     "schema": "local",
-    "walltime": 89,
+    "walltime": 85,
     "project": "MED110"
 }
