@@ -102,7 +102,7 @@ def generate_training_pipeline(cfg):
             t1.cpu_reqs = {
                 "processes": 6 * cfg["node_counts"] // int(num_MD),
                 "process_type": "MPI",
-                "threads_per_process": 6 * 4,
+                "threads_per_process": 6,
                 "thread_type": "OpenMP",
             }
             t1.gpu_reqs = {
@@ -178,7 +178,7 @@ def generate_training_pipeline(cfg):
         t2.cpu_reqs = {
             "processes": max(1, cnt_constraint),
             "process_type": "MPI",
-            "threads_per_process": 6 * 4,
+            "threads_per_process": 6,
             "thread_type": "OpenMP",
         }
 
@@ -330,7 +330,7 @@ def generate_training_pipeline(cfg):
         t4.cpu_reqs = {
             "processes": 6 * cfg["node_counts"],
             "process_type": "MPI",
-            "threads_per_process": 6 * 4,
+            "threads_per_process": 6,
             "thread_type": "OpenMP",
         }
         t4.gpu_reqs = {
@@ -442,7 +442,7 @@ if __name__ == "__main__":
         "schema": cfg["schema"],
         "walltime": cfg["walltime"],
         "project": cfg["project"],
-        "cpus": 42 * 4 * cfg["node_counts"],
+        "cpus": 42 * cfg["node_counts"],
         "gpus": cfg["node_counts"] * cfg["gpu_per_node"],
     }
 
