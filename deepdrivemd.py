@@ -116,7 +116,8 @@ def generate_training_pipeline(cfg):
 
             # Add the MD task to the simulating stage
             s1.add_tasks(t1)
-        def namd_task_success(omm_dirs):
+        def namd_task_success():
+            nonlocal omm_dirs
             import os
             import glob
             import shutil
