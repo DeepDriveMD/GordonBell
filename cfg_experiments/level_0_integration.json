@@ -40,6 +40,6 @@
     "resource": "ornl.summit",
     "queue": "debug",
     "schema": "local",
-    "walltime": 117,
+    "walltime": 120,
     "project": "MED110"
 }
