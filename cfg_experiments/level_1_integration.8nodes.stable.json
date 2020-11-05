@@ -7,7 +7,7 @@
     "cutoff": 8,
     "selection": "((name CA and segid AS1 BS1 CS1 and resid 16:685) or (name CA and segid AS2 BS2 CS2 and resid 686:1140))",
     "epoch": 5,
-    "sample_interval": 3,
+    "sample_interval": 1,
     "batch_size": 2,
     "model_type": "aae",
     "conda_pytorch": "/gpfs/alpine/proj-shared/med110/conda/pytorch",
