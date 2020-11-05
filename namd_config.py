@@ -108,7 +108,7 @@ def write_namd_configuration(conf_file: str, pdb_file:str, args: dict):
         "timestep            2.0  ;# 2fs/step\n",
         "rigidBonds          all  ;# needed for 2fs steps\n",
         "nonbondedFreq       1\n",
-        "fullElectFrequency  3  \n",
+        "fullElectFrequency  %s  \n" % args["fullElectFrequency"],
         "stepspercycle       %s\n" % args['stepspercycle'],
         "\n",
         "\n",
