@@ -11,7 +11,7 @@
     "batch_size": 2,
     "model_type": "aae",
     "conda_pytorch": "/gpfs/alpine/proj-shared/med110/conda/pytorch",
-    "base_path": "/gpfs/alpine/proj-shared/med110/runs/4nodes",
+    "base_path": "/gpfs/alpine/proj-shared/med110/runs/4nodes.stable",
     "molecules_path": "/gpfs/alpine/proj-shared/med110/hrlee/git/braceal/molecules",
     "namd_path": "/gpfs/alpine/world-shared/bip115/NAMD_binaries/summit/NAMD_LATEST_Linux-POWER-pami-smp-Summit-CUDA/namd2",
     "namd_log_filename": "pr.4.log",
