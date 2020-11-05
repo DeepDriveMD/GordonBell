@@ -85,7 +85,7 @@ def generate_training_pipeline(cfg):
             write_namd_configuration(conf_path, pdb_path, cfg)
             t1.pre_exec += [
                 "cp %s %s" % (pdb_path, omm_dir),
-                "cp %s %s" % (conf_path, omm_dir),
+                "cp %s %s/namd.conf" % (conf_path, omm_dir),
             ]
             t1.arguments = [
                 "+ignoresharing",
@@ -93,10 +93,10 @@ def generate_training_pipeline(cfg):
                 "7",
                 "+pemap",
                 "0-83:4,88-171:4",
-                conf_path,
+                os.path.join(omm_dir, "namd.conf"),
             ]
 
-            t1.download_output_data = ["STDOUT > %s_%s" % (i, cfg["namd_log_filename"])]
+            t1.download_output_data = ["STDOUT > namd_%s_%s" % (time_stamp + i, cfg["namd_log_filename"])]
 
             # assign hardware the task
             t1.cpu_reqs = {
@@ -153,7 +153,7 @@ def generate_training_pipeline(cfg):
         # - each rank processes 2 files
         # - each iteration accumulates files to process
         cnt_constraint = min(
-            cfg["node_counts"] * 6, cfg["md_counts"] * max(1, CUR_STAGE) // 2
+            cfg["node_counts"] * 6, cfg["md_counts"] * (CUR_STAGE + 1) // 2
         )
 
         t2.executable = ["%s/bin/python" % (cfg["conda_pytorch"])]  # MD_to_CVAE.py
@@ -176,7 +176,7 @@ def generate_training_pipeline(cfg):
 
         # Add the aggregation task to the aggreagating stage
         t2.cpu_reqs = {
-            "processes": 1 * cnt_constraint,
+            "processes": max(1, cnt_constraint),
             "process_type": "MPI",
             "threads_per_process": 6 * 4,
             "thread_type": "OpenMP",
