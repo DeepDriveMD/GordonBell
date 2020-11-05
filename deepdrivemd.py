@@ -38,6 +38,7 @@ def generate_training_pipeline(cfg):
 
         # MD tasks
         time_stamp = int(time.time())
+        omm_dirs = []
         for i in range(num_MD):
             t1 = Task()
 
@@ -74,6 +75,7 @@ def generate_training_pipeline(cfg):
                 cfg["system_name"],
                 time_stamp + i,
             )
+            omm_dirs.append(omm_dir)
 
             # pick initial point of simulation
             if initial_MD:
@@ -114,6 +116,17 @@ def generate_training_pipeline(cfg):
 
             # Add the MD task to the simulating stage
             s1.add_tasks(t1)
+        def namd_task_success(omm_dirs):
+            import os
+            import glob
+            import shutil
+            for omm_dir in omm_dirs:
+                if list(glob.glob(os.path.join(omm_dir, '*.dcd'))):
+                    print('success')
+                else:
+                    shutil.rmtree('%s') % omm_dir
+
+        s1.post_exec = namd_task_success
         return s1
 
     def generate_aggregating_stage():
