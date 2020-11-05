@@ -1,4 +1,4 @@
-def write_namd_configuration(conf_file: str, pdb_file:str, args: dict):
+def write_namd_configuration(conf_file: str, pdb_file: str, args: dict):
     conf = [
         "#############################################################\n",
         "## JOB DESCRIPTION                                         ##\n",
@@ -23,9 +23,9 @@ def write_namd_configuration(conf_file: str, pdb_file:str, args: dict):
         "\n",
         "\n",
         "set logfreq  \t\t  10080\n",
-        "set dcdfreq     \t  %s\n" % args['dcdfreq'],
-        "set num_steps_min  \t  %s\n" % args['num_steps_min'],
-        "set num_steps_eq   \t  %s;#250000  --> 0.5 ns\n" % args['num_steps_eq'],
+        "set dcdfreq     \t  %s\n" % args["dcdfreq"],
+        "set num_steps_min  \t  %s\n" % args["num_steps_min"],
+        "set num_steps_eq   \t  %s;#250000  --> 0.5 ns\n" % args["num_steps_eq"],
         "\n",
         "set temp\t\t310\n",
         "\n",
@@ -109,7 +109,7 @@ def write_namd_configuration(conf_file: str, pdb_file:str, args: dict):
         "rigidBonds          all  ;# needed for 2fs steps\n",
         "nonbondedFreq       1\n",
         "fullElectFrequency  %s  \n" % args.get("fullElectFrequency", "3"),
-        "stepspercycle       %s\n" % args['stepspercycle'],
+        "stepspercycle       %s\n" % args["stepspercycle"],
         "\n",
         "\n",
         "################################################\n",
@@ -161,7 +161,7 @@ def write_namd_configuration(conf_file: str, pdb_file:str, args: dict):
         "#consref\t\t${dir_pdb}/${namepdb}.pdb\n",
         "#conskfile\t${dir_pdb}/${namepdb}.proteinglycanrestrained.cnst\n",
         "#conskcol\tB\n",
-        "#margin\t\t3\n",
+        "%smargin\t\t3\n" % ("" if "margin" in args else "#"),
         "#\n",
         "#tclforces\t\t\ton\n",
         "#set waterCheckFreq              100\n",
