@@ -125,7 +125,7 @@ def generate_training_pipeline(cfg):
                 if list(glob.glob(os.path.join(omm_dir, '*.dcd'))):
                     print('success')
                 else:
-                    shutil.rmtree('%s') % omm_dir
+                    shutil.rmtree('%s' % omm_dir)
 
         s1.post_exec = namd_task_success
         return s1
