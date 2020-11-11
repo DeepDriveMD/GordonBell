@@ -41,4 +41,4 @@
 | `queue` | str | radical.entk res_dict parameter: 'batch' or 'killable'|
 | `schema` | str | radical.entk res_dict parameter: 'local'|
 | `walltime` | int | Number of minutes to run job for.|
-| `project` | int | HPC project id.|
+| `project` | str | HPC project id.|
