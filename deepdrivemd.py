@@ -4,12 +4,10 @@ import sys
 import json
 import time
 import itertools
-
 import radical.utils as ru
-
 from radical.entk import Pipeline, Stage, Task, AppManager
-
 from namd_config import write_namd_configuration
+import base64
 #
 
 def generate_training_pipeline(cfg):
@@ -435,15 +433,11 @@ def generate_training_pipeline(cfg):
 if __name__ == "__main__":
 
     reporter = ru.Reporter(name="radical.entk")
-    reporter.title("COVID-19 - Workflow2")
+    reporter.title("COVID-19 - Gordon Bell")
 
     # resource specified as argument
     if len(sys.argv) == 2:
         cfg_file = sys.argv[1]
-    elif sys.argv[0] == "molecules_adrp.py":
-        cfg_file = "adrp_system.json"
-    elif sys.argv[0] == "molecules_3clpro.py":
-        cfg_file = "3clpro_system.json"
     else:
         reporter.exit("Usage:\t%s [config.json]\n\n" % sys.argv[0])
 
@@ -463,12 +457,17 @@ if __name__ == "__main__":
 
     # Create Application Manager
     appman = AppManager(
-        hostname=os.environ.get("RMQ_HOSTNAME"),
-        port=int(os.environ.get("RMQ_PORT")),
-        username=os.environ.get("RMQ_USERNAME"),
-        password=os.environ.get("RMQ_PASSWORD"),
-    )
+        hostname=os.environ.get("RMQ_HOSTNAME", cfg['rmq_hostname']),
+        port=int(os.environ.get("RMQ_PORT", cfg['rmq_port'])),
+        username=os.environ.get("RMQ_USERNAME",
+            base64.a85decode(cfg['auth'].encode('utf-8')).decode('utf-8')),
+        password=os.environ.get("RMQ_PASSWORD",
+            base64.a85decode(cfg['auth'].encode('utf-8')).decode('utf-8')))
     appman.resource_desc = res_dict
+    if cfg['auth'] and 'RADICAL_PILOT_DBURL' not in os.environ:
+        os.environ['RADICAL_PILOT_DBURL'] = \
+                "mongodb://{0}:{0}@{1}:{2}/{0}".format(base64.a85decode(cfg['auth'].encode('utf-8')).decode('utf-8'),
+                cfg['rmq_hostname'], cfg['db_port'])
 
     pathlib.Path("%s/tmp" % cfg["base_path"]).mkdir(exist_ok=True)
     p1 = generate_training_pipeline(cfg)

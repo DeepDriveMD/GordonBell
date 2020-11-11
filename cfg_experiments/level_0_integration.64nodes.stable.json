@@ -45,5 +45,9 @@
     "queue": "debug",
     "schema": "local",
     "walltime": 89,
-    "project": "MED110"
+    "project": "MED110",
+    "rmq_hostname": "apps.marble.ccs.ornl.gov",
+    "rmq_port": 31848,
+    "db_port": 32020,
+    "auth": "B4>4XDg#i*0f]"
 }
