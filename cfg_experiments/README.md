@@ -45,5 +45,5 @@
 | `rmq_hostname` | str | RabbitMQ hostname for radical.entk. 'RMQ_HOSTNAME' env variable overrides if set. |
 | `rmq_port` | int | RabbitMQ port number for radical.entk. 'RMQ_PORT' env variable overrides if set. |
 | `db_port` | int | MongoDB port number for radical.pilot. 'RADICAL_PILOT_DBURL' env variable overrides if set. |
-| `auth` | str | encrypted string for authentication in radical.entk and radical.pilot. Find out details about [radical.pilot](https://radicalpilot.readthedocs.io/en/stable/apidoc.html), [radical.entk](https://radicalentk.readthedocs.io/en/latest/install.html#rabbitmq). |
+| `auth` | str | Encrypted string for authentication in radical.entk and radical.pilot. Find out details about [radical.pilot](https://radicalpilot.readthedocs.io/en/stable/apidoc.html), [radical.entk](https://radicalentk.readthedocs.io/en/latest/install.html#rabbitmq). |
 
