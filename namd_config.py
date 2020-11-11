@@ -161,7 +161,7 @@ def write_namd_configuration(conf_file: str, pdb_file: str, args: dict):
         "#consref\t\t${dir_pdb}/${namepdb}.pdb\n",
         "#conskfile\t${dir_pdb}/${namepdb}.proteinglycanrestrained.cnst\n",
         "#conskcol\tB\n",
-        "%smargin\t\t3\n" % ("" if "margin" in args else "#"),
+        "%smargin\t\t5\n" % ("" if "margin" in args else "#"),
         "#\n",
         "#tclforces\t\t\ton\n",
         "#set waterCheckFreq              100\n",

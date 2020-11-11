@@ -123,8 +123,9 @@ def generate_training_pipeline(cfg):
             import shutil
             for omm_dir in omm_dirs:
                 if list(glob.glob(os.path.join(omm_dir, '*.dcd'))):
-                    print('success')
+                    print('success - NAMD run (%s)' % omm_dir)
                 else:
+                    print('failure - NAMD run (%s)' % omm_dir)
                     shutil.rmtree('%s' % omm_dir)
 
         s1.post_exec = namd_task_success
